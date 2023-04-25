@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"log"
 	"math"
 	"net"
 	"net/url"
@@ -791,6 +792,10 @@ func (c *clusterStateHolder) Reload(ctx context.Context) (*clusterState, error) 
 	return state, nil
 }
 
+func init() {
+	log.SetFlags(log.Flags() | log.Lmicroseconds)
+}
+
 func (c *clusterStateHolder) LazyReload() {
 	if !atomic.CompareAndSwapUint32(&c.reloading, 0, 1) {
 		return
@@ -800,6 +805,7 @@ func (c *clusterStateHolder) LazyReload() {
 
 		_, err := c.Reload(context.Background())
 		if err != nil {
+			log.Println("Reload error: ", err)
 			return
 		}
 		time.Sleep(200 * time.Millisecond)
@@ -951,6 +957,7 @@ func (c *ClusterClient) process(ctx context.Context, cmd Cmder) error {
 		var moved bool
 		var addr string
 		moved, ask, addr = isMovedError(lastErr)
+		log.Println("(process) isMovedError returned ", moved, ask, addr)
 		if moved || ask {
 			c.state.LazyReload()
 
@@ -1359,6 +1366,7 @@ func (c *ClusterClient) checkMovedErr(
 	ctx context.Context, cmd Cmder, err error, failedCmds *cmdsMap,
 ) bool {
 	moved, ask, addr := isMovedError(err)
+	log.Println("(checkMovedErr) isMovedError returned ", moved, ask, addr)
 	if !moved && !ask {
 		return false
 	}
@@ -1502,6 +1510,7 @@ func (c *ClusterClient) processTxPipelineNodeConn(
 			setCmdsErr(cmds, err)
 
 			moved, ask, addr := isMovedError(err)
+			log.Println("(processTxPipelineNodeConn) isMovedError returned ", moved, ask, addr)
 			if moved || ask {
 				return c.cmdsMoved(ctx, trimmedCmds, moved, ask, addr, failedCmds)
 			}
@@ -1609,6 +1618,7 @@ func (c *ClusterClient) Watch(ctx context.Context, fn func(*Tx) error, keys ...s
 		}
 
 		moved, ask, addr := isMovedError(err)
+		log.Println("(Watch) isMovedError returned ", moved, ask, addr)
 		if moved || ask {
 			node, err = c.nodes.GetOrCreate(addr)
 			if err != nil {
