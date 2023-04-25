@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"log"
 	"math"
 	"net"
 	"net/url"
@@ -800,6 +801,7 @@ func (c *clusterStateHolder) LazyReload() {
 
 		_, err := c.Reload(context.Background())
 		if err != nil {
+			log.Println("Reload error: ", err)
 			return
 		}
 		time.Sleep(200 * time.Millisecond)
