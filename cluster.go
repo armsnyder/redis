@@ -799,11 +799,12 @@ func (c *clusterStateHolder) LazyReload() {
 	go func() {
 		defer atomic.StoreUint32(&c.reloading, 0)
 
-		_, err := c.Reload(context.Background())
+		state, err := c.Reload(context.Background())
 		if err != nil {
 			log.Println("Reload error: ", err)
 			return
 		}
+		log.Printf("Reload succeeded: %#v\n", state.slots)
 		time.Sleep(200 * time.Millisecond)
 	}()
 }
@@ -935,6 +936,7 @@ func (c *ClusterClient) process(ctx context.Context, cmd Cmder) error {
 		if lastErr == nil {
 			return nil
 		}
+		log.Println("process error: ", lastErr)
 		if isReadOnly := isReadOnlyError(lastErr); isReadOnly || lastErr == pool.ErrClosed {
 			if isReadOnly {
 				c.state.LazyReload()
@@ -953,6 +955,7 @@ func (c *ClusterClient) process(ctx context.Context, cmd Cmder) error {
 		var moved bool
 		var addr string
 		moved, ask, addr = isMovedError(lastErr)
+		log.Println("isMovedError returned ", moved, ask, addr)
 		if moved || ask {
 			c.state.LazyReload()
 
